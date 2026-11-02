@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json">
+<title>Deutsch Partner AI</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="brand">🧠 Deutsch Partner AI</div><span class="tag">Personal Edition</span></header>
+<main>
+<section class="hero"><p class="eyebrow">YOUR PRIVATE GERMAN PRACTICE PARTNER</p><h1>Hallo! 👋</h1><p>Practice your own dialogues, line by line.</p></section>
+<section class="panel">
+<h2>1. Add your dialogue</h2>
+<label>Dialogue title<input id="title" placeholder="Restaurant Reservation" value="My first dialogue"></label>
+<label>Paste dialogue<textarea id="script" rows="8" placeholder="Person A: Guten Tag!&#10;Person B: Guten Tag! Wie kann ich Ihnen helfen?"></textarea></label>
+<p class="hint">One line per turn. Format: <b>Person A: sentence</b> / <b>Person B: sentence</b>.</p>
+<div class="actions"><button id="save">Save dialogue</button><button class="secondary" id="loadSample">Load sample</button></div>
+</section>
+<section class="panel">
+<h2>2. Practice settings</h2>
+<div class="two">
+<label>Your role<select id="role"><option>Person B</option><option>Person A</option></select></label>
+<label>Mode<select id="mode"><option value="text">Text</option><option value="voice">Voice + Text</option></select></label>
+</div>
+<label>Optional Gemini API key (for AI correction)<input id="apiKey" type="password" placeholder="Paste your API key here"></label>
+<p class="hint">The key is saved only in this browser on this device. Do not share this app with others while a key is saved.</p>
+<button id="start">Start practice</button>
+</section>
+<section class="panel practice" id="practice">
+<div class="practice-head"><h2>3. Practice room</h2><span id="progress">Not started</span></div>
+<div id="speaker" class="speaker">Your dialogue will appear here.</div>
+<div id="feedback" class="feedback" aria-live="polite"></div>
+<label id="answerLabel">Your answer<textarea id="answer" rows="3" placeholder="Type your German answer..."></textarea></label>
+<div class="actions"><button id="submit">Submit answer</button><button class="secondary" id="listen">🔊 Repeat AI line</button><button class="secondary" id="mic">🎙 Speak</button></div>
+<div class="actions"><button class="secondary" id="retry">Try again</button><button class="secondary" id="next">Skip / Next</button><button class="danger" id="stop">End practice</button></div>
+</section>
+<section class="panel"><h2>Saved dialogues</h2><div id="saved" class="saved">No saved dialogues yet.</div></section>
+</main>
+<footer>Deutsch Partner AI · Your practice stays on this device</footer>
+<script src="app.js"></script>
+</body></html>

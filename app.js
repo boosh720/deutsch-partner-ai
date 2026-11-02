@@ -1,0 +1,32 @@
+const $=id=>document.getElementById(id);
+let lines=[], idx=0, userRole="Person B", active=false, currentDialogue=null;
+const sample=`Person A: Guten Tag! Ich möchte einen Tisch für zwei Personen reservieren.
+Person B: Guten Tag! Für wann möchten Sie reservieren?
+Person A: Für Samstagabend, bitte.
+Person B: Um wie viel Uhr möchten Sie kommen?
+Person A: Um 19 Uhr.
+Person B: Auf welchen Namen darf ich reservieren?`;
+function parseScript(s){return s.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map((line,n)=>{const m=line.match(/^(Person\s*[AB])\s*:\s*(.+)$/i);if(!m)throw Error(`Line ${n+1} must start with Person A: or Person B:`);return {role:m[1].replace(/\s+/g," "),text:m[2].trim()}})}
+function say(t){if(!("speechSynthesis"in window))return; speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="de-DE";speechSynthesis.speak(u)}
+function current(){return lines[idx]}
+function show(){if(!active)return;if(idx>=lines.length){$("speaker").textContent="🎉 Dialogue completed!";$("progress").textContent="Finished";$("answerLabel").hidden=true;$("submit").disabled=true;return}
+const l=current();$("progress").textContent=`Turn ${idx+1} / ${lines.length}`;
+if(l.role!==userRole){$("speaker").textContent=`AI · ${l.role}\n${l.text}`;$("answerLabel").hidden=true;$("submit").disabled=true;say(l.text);$("feedback").textContent="Listen and get ready for your turn.";advanceAfterAi();}
+else{$("speaker").textContent=`Your turn · ${l.role}\nPlease say or type the exact next line from your dialogue.`;$("answerLabel").hidden=false;$("submit").disabled=false;$("answer").value="";$("answer").focus();$("feedback").textContent="Your turn. Use the exact line from your script."}
+}
+function advanceAfterAi(){if(current()?.role!==userRole){$("answerLabel").hidden=true;$("submit").disabled=true;$("feedback").textContent="AI line played. Tap Next when ready for the next turn.";}}
+function next(){if(!active)return;if(idx<lines.length-1){idx++;show()}else{idx++;show()}}
+$("loadSample").onclick=()=>{$("script").value=sample;$("title").value="Restaurant Reservation"};
+$("save").onclick=()=>{try{const parsed=parseScript($("script").value);const d={id:Date.now(),title:$("title").value||"Untitled",script:$("script").value,lines:parsed};const all=JSON.parse(localStorage.dialogues||"[]");all.unshift(d);localStorage.dialogues=JSON.stringify(all.slice(0,50));renderSaved();$("feedback").textContent="Dialogue saved on this device."}catch(e){$("feedback").textContent=e.message}};
+function renderSaved(){const all=JSON.parse(localStorage.dialogues||"[]");$("saved").innerHTML="";if(!all.length){$("saved").textContent="No saved dialogues yet.";return}all.forEach(d=>{const b=document.createElement("button");b.className="secondary";b.textContent=d.title;b.onclick=()=>{$("title").value=d.title;$("script").value=d.script;$("feedback").textContent="Loaded: "+d.title};$("saved").appendChild(b)})}
+$("start").onclick=()=>{try{lines=parseScript($("script").value);if(lines.length<2)throw Error("Please add at least two dialogue lines.");userRole=$("role").value;idx=0;active=true;$("answerLabel").hidden=false;$("submit").disabled=false;$("apiKey").value=localStorage.geminiKey||"";localStorage.geminiKey=$("apiKey").value;show()}catch(e){$("feedback").textContent=e.message}};
+$("apiKey").onchange=()=>localStorage.geminiKey=$("apiKey").value.trim();
+async function correction(expected,actual){const key=$("apiKey").value.trim();if(!key)return `Expected line:\n${expected}\n\nYour answer:\n${actual}\n\nBasic check: compare your answer with the original script. Add a Gemini API key for AI grammar feedback.`;const prompt=`You are a German tutor. The exact target sentence from a fixed dialogue is: "${expected}". The learner said/wrote: "${actual}". Briefly say whether it is correct. If wrong, explain the grammar/vocabulary error in simple English and give the exact target sentence. Do not rewrite or alter the fixed dialogue.`;
+try{const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+encodeURIComponent(key),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});const j=await r.json();if(!r.ok)throw Error(j.error?.message||"API request failed");return j.candidates?.[0]?.content?.parts?.map(p=>p.text).join("")||"No feedback returned."}catch(e){return "AI feedback unavailable: "+e.message+"\n\nExpected line: "+expected}}
+$("submit").onclick=async()=>{if(!active||!current()||current().role!==userRole)return;const actual=$("answer").value.trim(),expected=current().text;if(!actual){$("feedback").textContent="Please enter or speak your answer first.";return}const norm=s=>s.toLocaleLowerCase("de-DE").replace(/[.,!?;:]/g,"").replace(/\s+/g," ").trim();$("submit").disabled=true;$("feedback").textContent="Checking your answer…";if(norm(actual)===norm(expected)){$("feedback").textContent="✅ Correct! Exact dialogue line matched.\n\n"+await correction(expected,actual)}else{$("feedback").textContent="⚠️ This does not exactly match the script.\n\n"+await correction(expected,actual)}$("submit").disabled=false};
+$("listen").onclick=()=>{const l=current();if(l&&l.role!==userRole)say(l.text);else if(l)say(l.text)};
+$("next").onclick=()=>next();$("retry").onclick=()=>{if(current()?.role===userRole){$("answer").value="";$("feedback").textContent="Try the same line again."}else say(current()?.text||"")};
+$("stop").onclick=()=>{active=false;speechSynthesis?.cancel?.();$("speaker").textContent="Practice ended."; $("progress").textContent="Stopped"};
+$("mic").onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){$("feedback").textContent="Speech recognition is not supported in this browser. Use Chrome on Android or type your answer.";return}const rec=new SR();rec.lang="de-DE";rec.interimResults=false;rec.onresult=e=>$("answer").value=e.results[0][0].transcript;rec.onerror=e=>$("feedback").textContent="Microphone error: "+e.error;rec.start()};
+if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+renderSaved();$("answerLabel").hidden=true;$("submit").disabled=true;
